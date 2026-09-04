@@ -1,0 +1,7 @@
+{
+  name="Welcome!",
+  author="KrakenCorp",
+  version=0,
+  cores={"physics2d"},
+  start_scene="scene_0",
+}
