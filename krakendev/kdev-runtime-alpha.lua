@@ -160,6 +160,10 @@ return function(sysDir, pDir, shell, require)
     )
   end)
 
+  if _ENGINE.audio then
+    _ENGINE.audio.stopAll()
+  end
+
   -- Restore Color Pallete
   for i, name in ipairs(colorNames) do
     term.setPaletteColor(colors[name], cpalette[i])
