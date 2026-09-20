@@ -100,8 +100,30 @@ function lib.normalize(vec, mag)
  return vec.createVector(unpack(r))
 end
 
+function lib.dotProduct(v,a)
+  local r = 0
+  for i, x in ipairs(v.dimensions) do
+    r = r + (x + a[i])
+  end
+  return r
+end
+
+function lib.getRotation2d(v)
+  return math.atan2(v.y, v.x)
+end
+
+function lib.rotate2d(v,r)
+  local mag = v:mag()
+  local rot = v:getRotation2d(rot)
+  return v.createRot2d(rot + r) * mag
+end
+
 function lib.create2d(x,y)
   return lib.createVector(x or 0, y or 0)
+end
+
+function lib.createRot2d(r)
+  return lib.create2d(math.cos(r),math.sin(r))
 end
 
 function lib.create3d(x,y,z)
@@ -109,7 +131,7 @@ function lib.create3d(x,y,z)
 end
 
 function lib.copy(v)
- return _KRAKENLIB.vector.createVector(unpack(v.dimensions))
+ return _ENGINE.vector.createVector(unpack(v.dimensions))
 end
 
 function lib.vecop(fn,vec,x)

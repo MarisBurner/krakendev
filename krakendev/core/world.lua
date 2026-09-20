@@ -16,9 +16,30 @@ function global.loadScene(id)
   lib.sceneEnv = senv
 end
 
+function lib.onload()
+  lib.lastTick = os.epoch("utc")
+  lib.lastTime = os.epoch("utc")
+end
+
+global.fps = 0
+global.frames = 0
+lib.lastFrame = 0
 lib.tickpriority = 0
+local psr = 1 / 60
 function lib.everytick()
-  lib.sceneEnv.Update()
+  local ctime = os.epoch("utc")
+
+  local tickDist = ctime - lib.lastTick
+  if tickDist > 100 then
+    global.fps = ((global.frames - lib.lastFrame) / tickDist) * 1000
+    lib.lastTick = ctime
+    lib.lastFrame = global.frames
+  end
+
+  lib.sceneEnv.Update((ctime - lib.lastTime)*psr)
+  
+  lib.lastTime = ctime
+  global.frames = global.frames + 1
 end
 
 return "world", lib

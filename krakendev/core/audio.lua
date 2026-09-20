@@ -45,7 +45,7 @@ function global.playSFX(id)
     if t then
       return i > #sound
     end
-    while not lib.speaker.playAudio(sound[i]) do
+    while not lib.speaker.playAudio(sound) do
       os.pullEvent("speaker_audio_empty")
     end
     i = i + 1

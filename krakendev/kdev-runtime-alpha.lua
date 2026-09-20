@@ -71,6 +71,7 @@ return function(sysDir, pDir, shell, require)
     fl.close()
     return r
   end
+  _ENGINE.system.readAll = readAll
 
   local confDir = fs.find(fs.combine(pDir, "*.kproj"))
   assert(#confDir == 1, "Missing or conflicting .kproj configurations")
