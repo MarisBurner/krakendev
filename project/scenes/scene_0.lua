@@ -4,27 +4,50 @@ local world = _ENGINE.world
 local controls = _ENGINE.controls
 local vector = _ENGINE.vector
 
-function Init()
+local player
+
+function DataInit()
+  -- Sounds
   audio.loadSound("song1","TestBop1.dfpwm")
   audio.loadSound("sfx1","TestSfx1.dfpwm")
+  -- Images
   graphics.loadImage("test","Test.ttbl","tiletable")
+  graphics.loadImage("player","Player.ttbl","tiletable")
+  graphics.loadImage("sword","Sword.ttbl","tiletable")
+  -- Object Presets
+  world.loadPreset("player","player.kobj")
+  world.loadPreset("block","block.kobj")
 end
 
-local a = 0
-function Update(delta)
-  graphics.flush("#ffffff","#000000")
-  graphics.writeAt(delta,1,1)
-  a = a + (math.rad(5) * delta)
-  graphics.push()
-    graphics.centerRect(5,5)
-    graphics.translate(15,10)
-    graphics.image(0,0,5,5,"test")
-  graphics.pop()
+function Init()
+  player = world.createEntity(
+    world.createTransform(
+      nil,
+      vector.create2d(1.5,1.5)
+    ),
+    world.createTransform(
+      nil,
+      vector.create2d(5,5) -- Object Render Size
+    ),
+  "player")
+  
+  player:addChild(
+    world.createEntity(
+      world.createTransform(
+        vector.create3d(6,1)
+      ),
+      world.createTransform(
+        nil,
+        vector.create2d(5,5) -- Object Render Size
+      ),
+    "block")
+  )
+  world.sceneEntity:addChild(player)
+end
 
-  graphics.push()
-    graphics.centerRect(5,5)
-    graphics.rotate(a)
-    graphics.translate(10,10)
-    graphics.image(0,0,5,5,"test")
-  graphics.pop()
+function Update(delta)
+  graphics.flush("#8888ff","#000000")
+  graphics.writeAt(world.fps,1,1)
+
+
 end

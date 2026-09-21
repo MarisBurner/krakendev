@@ -133,6 +133,7 @@ lib.colors = global.palette.SWEETIE
 lib.images = {}
 function global.loadImage(id, path, type)
   type = type or "tiletable"
+  path = fs.combine("/",path)
   local spath = fs.combine(_ENGINE.project.path, "assets", path)
   assert(fs.exists(spath), string.format("Failed to find image asset '%s'",path))
   local imgData = _ENGINE.system.readAll(spath)
@@ -146,7 +147,7 @@ function global.loadImage(id, path, type)
   else
     error(string.format("Cannot format image '%s' to format '%s'",id,type))
   end
-  lib.images[id] = imgBuff
+  lib.images[id] = {buffer=imgBuff}
 end
 
 function lib.blitFromIndex(i)
@@ -268,19 +269,45 @@ function lib.shaders.placeholderRect(x,y,u,v,w,uu,vv)
   return lib.estimateRGB(global.RGB(uu*255,vv*255,0)), 1, " "
 end
 
+function lib.shaders.empty(x,y,u,v,w,uu,vv)
+  return nil, nil, nil
+end
+
 function lib.createSolidShader(bc,tc,t)
   return function(x,y,u,v,w)
     return bc, tc, t
   end
 end
 
-function lib.createImageShader(imgBuff)
+function lib.createRGBSolidShader(bc,tc,t)
+  if bc then
+    bc = lib.estimateRGB(bc)
+  end
+  if tc then
+    tc = lib.estimateRGB(tc)
+  end
+  return function(x,y,u,v,w)
+    return bc, tc, t
+  end
+end
+
+function lib.createImageShader(imgBuff,tlx,tly)
+  local rtx, rty = tlx or 1, tly or 1
+  local edgeX, edgeY = (imgBuff.width*rtx) - 1, (imgBuff.height*rty) - 1
   return function(x,y,u,v,w,uu,vv)
-    local rx = math.min(math.floor(uu * imgBuff.width), imgBuff.width - 1)
-    local ry = math.min(math.floor(vv * imgBuff.height), imgBuff.height - 1)
+    local uu = uu * rtx
+    local vv = vv * rty
+    local rx = math.min(math.floor(uu * imgBuff.width), edgeX) % imgBuff.width 
+    local ry = math.min(math.floor(vv * imgBuff.height), edgeY) % imgBuff.height
     local tl = imgBuff[lib.getBuffPos(rx+1,ry+1,imgBuff)]
     return tl[2], tl[3], tl[1]
   end
+end
+
+function lib.createLoadedImageShader(imgId,tx,ty)
+  local imgData = lib.images[imgId]
+  assert(imgData,string.format("Cannot load shader, Image '%s' doesn't exist",imgId))
+  return lib.createImageShader(imgData.buffer,tx,ty)
 end
 
 function lib.drawLineBuffer(x1,y1,x2,y2,shader,z,buff)
@@ -458,7 +485,6 @@ end
 
 function lib.renderRect(x,y,w,h,shader,z,buff)
   local vector = _ENGINE.vector
-  local EPS = lib.epsilon
   local l, r, t, b = x, x+(w-1), y, y+(h-1)
   local tl, tr, br, bl = vector.create2d(l,t), vector.create2d(r,t), vector.create2d(r,b), vector.create2d(l,b)
   local points = {tl, tr, br, bl}
@@ -480,10 +506,8 @@ function global.rect(x,y,w,h,bc,tc,ch,z)
   lib.renderRect(x,y,w,h,shader,z,lib.gbuffer)
 end
 
-function global.image(x,y,w,h,imgId,z)
-  local imgBuffer = lib.images[imgId]
-  assert(imgBuffer,string.format("Cannot draw, Image '%s' doesn't exist",imgId))
-  local shader = lib.createImageShader(imgBuffer)
+function global.image(x,y,w,h,imgId,tx,ty,z)
+  local shader = lib.createLoadedImageShader(imgId,tx,ty)
   lib.renderRect(x,y,w,h,shader,z,lib.gbuffer)
 end
 
@@ -607,6 +631,7 @@ function lib.everytick()
 
     lib.calcColorBuffer = nbuff
   end
+  lib.transStack = {{}}
 end
 
 return "graphics", lib

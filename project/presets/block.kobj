@@ -1,0 +1,4 @@
+{
+  shader="builtin/image",
+  shaderargs={"sword"},
+}

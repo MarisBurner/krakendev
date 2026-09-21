@@ -1,0 +1,10 @@
+{
+  size={5,5},
+  tiles={
+    {},{nil,"#ffff00"},{nil,"#ffff00"},{nil,"#ffff00"},{},
+    {nil,"#000000"},{nil,"#ffff00"},{nil,"#ffff00"},{nil,"#ffff00"},{nil,"#000000"},
+    {nil,"#ffff00"},{nil,"#ffff00"},{nil,"#ffff00"},{nil,"#ffff00"},{nil,"#ffff00"},
+    {nil,"#ffff00"},{nil,"#000000"},{nil,"#000000"},{nil,"#000000"},{nil,"#ffff00"},
+    {},{nil,"#ffff00"},{nil,"#ffff00"},{nil,"#ffff00"},{},
+  },
+}

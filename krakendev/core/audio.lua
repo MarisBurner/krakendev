@@ -31,6 +31,7 @@ end
 global.stopAll = lib.stopAll
 
 function global.loadSound(id, path)
+  path = fs.combine("/",path)
   local spath = fs.combine(_ENGINE.project.path, "assets", path)
   assert(fs.exists(spath), string.format("Failed to find sound asset '%s'",path))
   lib.sounds[id] = spath
