@@ -1,6 +1,5 @@
 {
   shader="builtin/image",
   shaderargs={"player"},
-  centerShape=true,
   script="player.lua"
 }

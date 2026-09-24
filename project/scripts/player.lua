@@ -7,6 +7,11 @@ function Init(self)
 end
 
 function Update(self,delta)
-  self.transform.pos = vector.create2d(controls.mouse.x,controls.mouse.y)
-  self.rtransform.rot = self.rtransform.rot + (math.rad(5) * delta)
+  if controls.mouseDown then
+    self.transform.pos = vector.create2d(controls.mouse.x,controls.mouse.y)
+  else
+    if self:collideWith(world.sceneVars.floor) then
+      self.transform.pos = self.transform.pos + vector.create2d(1,0)
+    end
+  end
 end

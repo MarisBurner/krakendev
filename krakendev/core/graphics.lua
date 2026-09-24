@@ -188,7 +188,6 @@ end
 
 function lib.estimateRGB(pcolor)
   if type(pcolor) == "nil" then return end
-  local vector = _ENGINE.vector
   local rgb
   local calcColorBuffer = lib.calcColorBuffer
   pcolor = pcolor or 0
@@ -197,11 +196,11 @@ function lib.estimateRGB(pcolor)
   elseif type(pcolor) == "string" then
     rgb = bit.band(tonumber(pcolor:sub(-6), 16), 0xffffff)
   end
-  local rgbVec = vector.create3d(colors.unpackRGB(rgb))
 
   assert(rgb, string.format("Invalid RGB color '%s'", tostring(pcolor)))
   if not calcColorBuffer[rgb] then
-    local c
+    local vector = _ENGINE.vector
+    local rgbVec = vector.create3d(colors.unpackRGB(rgb))
 
     local rcmap = _ENGINE.utils.tableMap(lib.colorMap, function(v, i)
       return { vector.magSqr(v - rgbVec), i }
@@ -212,7 +211,7 @@ function lib.estimateRGB(pcolor)
       return a[1] < b[1]
     end)
 
-    c = lib.blitFromIndex(rcmap[1][2])
+    local c = lib.blitFromIndex(rcmap[1][2])
 
     calcColorBuffer[rgb] = {c, os.epoch("utc")}
     lib.flags.cbPurge = true -- Trigger Color Purge
@@ -422,9 +421,14 @@ end
 
 -- Rendering Pipeline
 lib.transStack = {{}}
+lib.renderProcs = {}
+
+function lib.addRenderProcess(fn)
+  lib.renderProcs[#lib.renderProcs+1] = fn
+end
 
 function lib.applyTrans(point)
-  r = point
+  local r = point
   for i = #lib.transStack, 1, -1 do
     local transLayer = lib.transStack[i]
     for j = 1, #transLayer do
@@ -489,13 +493,15 @@ function lib.renderRect(x,y,w,h,shader,z,buff)
   local tl, tr, br, bl = vector.create2d(l,t), vector.create2d(r,t), vector.create2d(r,b), vector.create2d(l,b)
   local points = {tl, tr, br, bl}
   local tPoints = lib.applyAllTrans(points)
-  lib.drawRectBuffer(
-    tPoints[1].x,tPoints[1].y,
-    tPoints[2].x,tPoints[2].y,
-    tPoints[3].x,tPoints[3].y,
-    tPoints[4].x,tPoints[4].y,
-    shader,z,buff
-  )
+  lib.addRenderProcess(function()
+    lib.drawRectBuffer(
+      tPoints[1].x,tPoints[1].y,
+      tPoints[2].x,tPoints[2].y,
+      tPoints[3].x,tPoints[3].y,
+      tPoints[4].x,tPoints[4].y,
+      shader,z,buff
+    )
+  end)
 end
 
 function global.rect(x,y,w,h,bc,tc,ch,z)
@@ -592,6 +598,9 @@ end
 
 lib.tickpriority = math.huge
 function lib.everytick()
+  parallel.waitForAll(table.unpack(lib.renderProcs))
+  lib.renderProcs = {}
+
   local i = 0
   for y = 1, global.height do
     for x = 1, global.width do

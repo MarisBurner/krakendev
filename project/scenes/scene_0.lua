@@ -1,15 +1,14 @@
 local graphics = _ENGINE.graphics
 local audio = _ENGINE.audio
 local world = _ENGINE.world
-local controls = _ENGINE.controls
 local vector = _ENGINE.vector
 
 local player
 
 function DataInit()
   -- Sounds
-  audio.loadSound("song1","TestBop1.dfpwm")
-  audio.loadSound("sfx1","TestSfx1.dfpwm")
+  -- audio.loadSound("song1","TestBop1.dfpwm")
+  -- audio.loadSound("sfx1","TestSfx1.dfpwm")
   -- Images
   graphics.loadImage("test","Test.ttbl","tiletable")
   graphics.loadImage("player","Player.ttbl","tiletable")
@@ -23,13 +22,14 @@ function Init()
   player = world.createEntity(
     world.createTransform(
       nil,
-      vector.create2d(1.5,1.5)
+      vector.create2d(1,1)
     ),
     world.createTransform(
       nil,
       vector.create2d(5,5) -- Object Render Size
     ),
   "player")
+  player:addRectHitbox(1,1,5,5)
   
   player:addChild(
     world.createEntity(
@@ -43,6 +43,18 @@ function Init()
     "block")
   )
   world.sceneEntity:addChild(player)
+
+  world.sceneVars.floor = world.createEntity(
+    world.createTransform(
+      vector.create3d(10,10)
+    ),
+    world.createTransform(
+      nil,
+      vector.create2d(5,5) -- Object Render Size
+    ),
+  "block")
+  world.sceneVars.floor:addRectHitbox(1,1,5,5)
+  world.sceneEntity:addChild(world.sceneVars.floor)
 end
 
 function Update(delta)

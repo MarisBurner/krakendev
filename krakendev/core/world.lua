@@ -5,6 +5,8 @@ assert(_ENGINE.system, "Core Library Missing System Permissions")
 lib.global = {}
 lib.loadedScenes = {}
 local global = lib.global
+global.gameVars = {}
+global.sceneVars = {}
 
 function lib.loadSandbox(path)
   assert(fs.exists(path),string.format("Cannot find lua file '%s'",path))
@@ -21,6 +23,7 @@ function global.loadScene(id)
   local senv = lib.loadSandbox(spath)
   local vector = _ENGINE.vector
   global.sceneEntity = lib.createEntity(nil,nil,{},{})
+  global.sceneVars = {}
   lib.sceneEnv = senv
   if not lib.loadedScenes[id] then
     senv.DataInit()
@@ -37,8 +40,8 @@ end
 
 function lib.polygonsIntersect(pointsA, pointsB)
   local axes = {}
-  for _, a in ipairs(getAxes(pointsA)) do axes[#axes+1] = a end
-  for _, a in ipairs(getAxes(pointsB)) do axes[#axes+1] = a end
+  for _, a in ipairs(pointsA) do axes[#axes+1] = a end
+  for _, a in ipairs(pointsB) do axes[#axes+1] = a end
 
   local function project(points, axisX, axisY)
     local minP, maxP = math.huge, -math.huge
@@ -71,7 +74,7 @@ function lib.recurseEntityGet(e,fn,default)
     return r
   end
   for i = 1, #e.children do
-    r = lib.recurseEntitGet(e.children[i],fn)
+    r = lib.recurseEntityGet(e.children[i],fn)
     if r ~= nil then
       return r
     end
@@ -89,15 +92,34 @@ function lib.recurseEntity(e,fn,onend)
   end
 end
 
-function entitylib.provideHitbox(e,x,y,w,h)
-  local l, r, t, b = x, x+(w-1), y, y+(h-1)
+function entitylib.addRectHitbox(e,x,y,w,h)
+  local vector = _ENGINE.vector
+  local l, r, t, b = x, x+w-1, y, y+h-1
   local tl, tr, br, bl = vector.create2d(l,t), vector.create2d(r,t), vector.create2d(r,b), vector.create2d(l,b)
   local points = {tl, tr, br, bl}
   e.hitbox = points
 end
 
 function entitylib.collideWith(e1,e2)
-  
+  local fgraphics = _ENGINE.globals.graphics
+  local graphics = _ENGINE.graphics
+  assert(e1.hitbox, "Attempted entity collision with no hitbox.")
+  fgraphics.push()
+    lib.applyEntityTransform(e1)
+    local mainHitbox = graphics.applyAllTrans(e1.hitbox)
+  fgraphics.pop()
+  return lib.recurseEntityGet(e2,function (e)
+    if not e.hitbox then
+      return
+    end
+    fgraphics.push()
+      lib.applyEntityTransform(e)
+      local hitbox = graphics.applyAllTrans(e.hitbox)
+    fgraphics.pop()
+    if lib.polygonsIntersect(mainHitbox,hitbox) then
+      return e
+    end
+  end)
 end
 
 function entitylib.addChild(p,c)
@@ -232,7 +254,7 @@ function lib.everytick()
       lib.applyEntityTransform(e)
       fgraphics.push()
       -- Purely Rendering
-      if p.centerShape then
+      if p.centerGraphics then
         fgraphics.centerRect(rt.scale.x,rt.scale.y)
       end
       fgraphics.rotate(rt.rot)
