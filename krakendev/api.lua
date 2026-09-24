@@ -40,6 +40,9 @@ assert(enginePath, "Couldn't find suitable kdev-runtime")
 
 api.engineVersion = fs.getName(enginePath)
 
+local tempDir = fs.combine(engineDir, "temp")
+fs.delete(tempDir)
+
 local crypto = peripheral.find("cryptographic_accelerator")
 
 function api.run(pDir)
@@ -153,6 +156,17 @@ function api.carts.unpackage(dir,odir,pass)
   end
   unserialiseDir(odir,cartData)
   return true
+end
+
+function api.carts.unpackRun(dir,pass)
+  local sysDir = shell.resolve(".")
+  local dir = fs.combine(sysDir, dir)
+  shell.setDir("/")
+  fs.delete(tempDir)
+  fs.makeDir(tempDir)
+  api.carts.unpackage(dir,tempDir,pass)
+  api.run(tempDir)
+  fs.delete(tempDir)
 end
 
 return api

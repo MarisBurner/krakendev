@@ -102,9 +102,11 @@ local function runCommand(cmd)
     local ndir = fs.combine(shell.resolve("."), toks[2])
     assert(fs.exists(ndir), "File/Directory doesn't exist.")
     fs.delete(ndir)
-    while not fs.exists(shell.resolve(".")) do
-      shell.setDir(fs.combine(shell.resolve("."), ".."))
+    local retDir = shell.resolve(".")
+    while not fs.exists(retDir) do
+      retDir = fs.combine(retDir, "..")
     end
+    shell.setDir(retDir)
     return "Successfully deleted!"
   elseif c == "exit" then
     assert(#toks == 1, "Invalid arguments (expected 0)")
@@ -124,12 +126,17 @@ local function runCommand(cmd)
       assert(#toks == 4 or #toks == 5, "Invalid arguments (expected 2-3)")
       api.carts.unpackage(toks[3], toks[4], toks[5])
       return string.format("Successfully unpacked cart '%s'", toks[3])
+    elseif toks[2] == "crun" then
+      assert(#toks == 3 or #toks == 4, "Invalid arguments (expected 1-2)")
+      api.carts.unpackRun(toks[3], toks[4])
+      runCommand("clear")
     elseif toks[2] == "cinfo" then
       assert(#toks == 3, "Invalid arguments (expected 1)")
       return textutils.serialise(api.carts.getInfo(toks[3]))
     elseif toks[2] == nil or toks[2] == "help" then
       local commandInfo = {
         {"kd run",nil,"Runs a project folder"},
+        {"kd crun","<cart_dir> [pass]","Unpacks a cart into temp memory before playing it"},
         {"kd pack","<proj_dir> <odir> [pass]","Packages a project file into a cart"},
         {"kd unpack","<cart_dir> <ndir> [pass]","Unpacks a cart into a project file"},
         {"kd cinfo","<cart_dir>","Returns info about the cart from its config"},
@@ -156,7 +163,7 @@ term.clear()
 term.setCursorPos(1, 1)
 while keepShellFlag do
   term.setTextColor(colors.magenta)
-  term.write(string.format(("$kdev/%s> "):sub(-12), shell.resolve(".")))
+  term.write(string.format("$kdev/%s> ", shell.resolve(".")):sub(-22))
   term.setTextColor(colors.white)
   local cmd = io.read()
   local suc, res = pcall(function()
