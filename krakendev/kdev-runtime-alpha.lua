@@ -148,7 +148,7 @@ return function(sysDir, pDir, shell, require)
           for _, p in ipairs(_ENGINE.system.updateQueue) do
             p[1]()
           end
-          sleep(0.1)
+          sleep(0)
         end
       end,
       function()
