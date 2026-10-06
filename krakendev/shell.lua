@@ -53,23 +53,40 @@ local function runCommand(cmd)
     local commandInfo = {
       {"kd help",nil,"Get help with the KrakenDev API"},
       {"info",nil,"Provides system and engine info"},
-      {"help","<page>","Check out all of the different commands"},
+      {"help","[page]","Check out all of the different commands"},
       {"exit",nil,"Leave the shell"},
+      {"reboot",nil,"Reboot the computer"},
       {"clear",nil,"Flushes the terminal"},
       {"ls","[dir]","List a directory's contents"},
+      {"l","[dir]","Raw 'ls'"},
       {"cd","<dir>","Enter a directory"},
       {"mkdir","<dir>","Create a directory"},
-      {"del","<path>","Delete a path"},
-      {"delete",nil,"Same as 'del'"},
+      {"copy, cp","<source> <path>","Copy a file or directory"},
+      {"delete, rm","<path>","Delete a file or directory"},
     }
     printHelpInfo("Shell Commands Reference:",commandInfo,5,toks[2])
   elseif c == "info" then
     assert(#toks == 1, "Invalid arguments (expected 0)")
     local enginePath = fs.find(fs.combine(sysDir, "kdev-runtime*"))[1]
     term.setTextColor(colors.pink)
-    print("Shell: KrakenDev Shell 1")
-    print("Dev: KrakenCorp")
-    print(string.format("Runtime: %s", enginePath or "Not Found"))
+    print("# KrakenDev Shell 1")
+    print("@ By KrakenCorp\n")
+    print(string.format("Engine = %s", fs.getName(enginePath) or "Not Found"))
+  elseif c == "l" then
+    local cdir
+    if #toks == 1 then
+      cdir = shell.resolve(".")
+    elseif #toks == 2 then
+      cdir = fs.combine(shell.resolve("."), toks[2])
+    else
+      error("Invalid arguments (expected 0-1)")
+    end
+    local allPaths = {}
+    local paths = fs.list(cdir)
+    for _, p in ipairs(paths) do
+      allPaths[#allPaths+1] = p
+    end
+    return table.concat(allPaths, " ")
   elseif c == "ls" then
     local cdir
     if #toks == 1 then
@@ -77,7 +94,7 @@ local function runCommand(cmd)
     elseif #toks == 2 then
       cdir = fs.combine(shell.resolve("."), toks[2])
     else
-      error("Invalid arguments (expected 1-2)")
+      error("Invalid arguments (expected 0-1)")
     end
     local paths = fs.list(cdir)
     print(string.format("/ %s | Type",((cdir:sub(-12,-1))..((" "):rep(12))):sub(1,12)))
@@ -102,8 +119,11 @@ local function runCommand(cmd)
         end
       end
       term.setTextColor(colors.gray)
-      term.write("| ")
+      term.write(i == #paths and "\\ " or "| ")
       term.setTextColor(col)
+      if p:len() > 12 then
+        p = p:sub(1,9) .. "..."
+      end
       term.write((p..((" "):rep(12))):sub(1,12))
       term.setTextColor(colors.gray)
       term.write(" | ")
@@ -128,7 +148,23 @@ local function runCommand(cmd)
     assert(not fs.exists(ndir), "This name already exists.")
     fs.makeDir(ndir)
     return "Successfully created directory!"
-  elseif c == "delete" or c == "del" then
+  elseif c == "cp" or c == "copy" then
+    assert(#toks == 3, "Invalid arguments (expected 2)")
+    local adir = fs.combine(shell.resolve("."), toks[2])
+    assert(fs.exists(adir), "Couldn't find source directory.")
+    local bdir = fs.combine(shell.resolve("."), toks[3])
+    if fs.exists(bdir) then
+      term.write("Path exists. Overwrite? [y,N] ")
+      local r = read()
+      if r == "y" then
+        fs.delete(bdir)
+      else
+        return
+      end
+    end
+    fs.copy(adir,bdir)
+    return "Successfully copied directory!"
+  elseif c == "delete" or c == "rm" then
     assert(#toks == 2, "Invalid arguments (expected 1)")
     local ndir = fs.combine(shell.resolve("."), toks[2])
     assert(fs.exists(ndir), "File/Directory doesn't exist.")
@@ -139,6 +175,8 @@ local function runCommand(cmd)
     end
     shell.setDir(retDir)
     return "Successfully deleted!"
+  elseif c == "reboot" then
+    os.reboot()
   elseif c == "exit" then
     assert(#toks == 1, "Invalid arguments (expected 0)")
     keepShellFlag = false
@@ -166,12 +204,12 @@ local function runCommand(cmd)
       return textutils.serialise(api.carts.getInfo(toks[3]))
     elseif toks[2] == nil or toks[2] == "help" then
       local commandInfo = {
+        {"kd help","[page]", "Check out all of the different commands"},
         {"kd run",nil,"Runs a project folder"},
         {"kd crun","<cart_dir> [pass]","Unpacks a cart into temp memory before playing it"},
         {"kd pack","<proj_dir> <odir> [pass]","Packages a project file into a cart"},
         {"kd unpack","<cart_dir> <ndir> [pass]","Unpacks a cart into a project file"},
         {"kd cinfo","<cart_dir>","Returns info about the cart from its config"},
-        {"kd help","<page>", "Check out all of the different commands"}
       }
       printHelpInfo("Kraken Dev Commands:",commandInfo,5,toks[3])
     else
