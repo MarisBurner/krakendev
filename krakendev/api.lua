@@ -7,14 +7,14 @@ local function testPath(path)
 end
 
 local function writeFile(path, d)
-  local file = fs.open(path,"w")
+  local file = fs.open(path, "w")
   file.write(d)
   file.close()
 end
 api.writeFile = writeFile
 
 local function readFile(path)
-  local file = fs.open(path,"r")
+  local file = fs.open(path, "r")
   local r = file.readAll()
   file.close()
   return r
@@ -22,7 +22,7 @@ end
 api.readFile = readFile
 
 local function readConfig(path)
-  local file = fs.open(path,"r")
+  local file = fs.open(path, "r")
   local r = file.readAll()
   file.close()
   return textutils.unserialize(r)
@@ -35,10 +35,13 @@ if engineDir == 0 then
 end
 
 -- Get Runtime
-local enginePath = fs.find(fs.combine(engineDir,"kdev-runtime*"))[1]
+local enginePath = fs.find(fs.combine(engineDir, "kdev-runtime*"))[1]
 assert(enginePath, "Couldn't find suitable kdev-runtime")
 
 api.engineVersion = fs.getName(enginePath)
+
+local tempDir = fs.combine(engineDir, "temp")
+fs.delete(tempDir)
 
 local crypto = peripheral.find("cryptographic_accelerator")
 
@@ -54,7 +57,7 @@ function api.run(pDir)
     shell.setDir(sysDir)
 
     local reng, err = loadfile(enginePath)
-    assert(not err, string.format("Runtime '%s' failed to load: %s",enginePath,err))
+    assert(not err, string.format("Runtime '%s' failed to load: %s", enginePath, err))
 
     reng()(sysDir, pDir, shell, require)
     return "Instance Ended Successfully!"
@@ -68,7 +71,9 @@ api.carts = {}
 
 local function serializeDir(dir)
   local r = {}
-  if not fs.isDir(dir) then return r end -- Fallback to missing directory
+  if not fs.isDir(dir) then
+    return r
+  end -- Fallback to missing directory
   local paths = fs.list(dir)
   for _, p in ipairs(paths) do
     local apath = fs.combine(dir, p)
@@ -80,6 +85,7 @@ local function serializeDir(dir)
   end
   return r
 end
+api.serialiseDir = serializeDir
 
 local function unserialiseDir(dir, data)
   fs.delete(dir)
@@ -93,11 +99,83 @@ local function unserialiseDir(dir, data)
     end
   end
 end
+api.unserialiseDir = unserialiseDir
+
+-- Run length encoding functions (to compress strings)
+function api.smallify(str)
+  local out = {}
+  local flag = 0
+  local runLen = 0
+
+  local function flush()
+    local n = runLen
+    while n >= 255 do
+      out[#out + 1] = string.char(255)
+      n = n - 255
+    end
+    out[#out + 1] = string.char(n)
+    flag = 1 - flag
+    runLen = 0
+  end
+
+  for i = 1, #str do
+    local byte = str:byte(i)
+    for k = 7, 0, -1 do
+      local bit = math.floor(byte / 2 ^ k) % 2
+      if bit == flag then
+        runLen = runLen + 1
+      else
+        flush()
+        runLen = 1
+      end
+    end
+  end
+
+  if #str > 0 then
+    flush()
+  end
+
+  return table.concat(out)
+end
+
+function api.largify(enc)
+  local out = {}
+  local flag = 0
+  local count = 0
+  local cur, nbits = 0, 0
+
+  local function pushBits(v, n)
+    for _ = 1, n do
+      cur = cur * 2 + v
+      nbits = nbits + 1
+      if nbits == 8 then
+        out[#out + 1] = string.char(cur)
+        cur, nbits = 0, 0
+      end
+    end
+  end
+
+  for i = 1, #enc do
+    local b = enc:byte(i)
+    count = count + b
+    if b ~= 255 then
+      pushBits(flag, count)
+      flag = 1 - flag
+      count = 0
+    end
+  end
+
+  if count ~= 0 or nbits ~= 0 then
+    error("malformed RLE data: incomplete run or bit count not a multiple of 8")
+  end
+
+  return table.concat(out)
+end
 
 function api.carts.getInfo(dir)
   local sysDir = shell.resolve(".")
   local dir = fs.combine(sysDir, dir)
-  local conf = readConfig(fs.combine(dir,"cart.config"))
+  local conf = readConfig(fs.combine(dir, "cart.config"))
   return {
     isSecure = not not conf.sec,
     sec = conf.sec,
@@ -105,14 +183,14 @@ function api.carts.getInfo(dir)
   }
 end
 
-function api.carts.package(dir,odir,pass)
+function api.carts.package(dir, odir, pass)
   local sysDir = shell.resolve(".")
   local dir, odir = fs.combine(sysDir, dir), fs.combine(sysDir, odir)
   assert(dir ~= odir, "Packing project path cannot be the same as the project")
 
   local conf = {}
   local projDataRaw = serializeDir(dir)
-  local projData = textutils.serialise(projDataRaw, {compact = true})
+  local projData = textutils.serialise(projDataRaw, { compact = true })
   fs.delete(odir)
   fs.makeDir(odir)
   if pass then
@@ -120,26 +198,26 @@ function api.carts.package(dir,odir,pass)
     conf.sec = {}
     conf.sec.n1 = crypto.randomBytes(16)
     conf.sec.n2 = crypto.randomBytes(16)
-    projData = crypto.encryptAes(projData,pass,cert.n1)
+    projData = crypto.encryptAes(projData, pass, cert.n1)
     conf.sec.cert = crypto.sha256(conf.n2 .. pass)
   end
-  local projConfPath = fs.find(fs.combine(dir,"*.kproj"))[1]
+  local projConfPath = fs.find(fs.combine(dir, "*.kproj"))[1]
   assert(projConfPath, "Project missing .kproj configuration")
   local projConf = readConfig(projConfPath)
   conf.info = {
     name = projConf.name,
     author = projConf.author,
   }
-  writeFile(fs.combine(odir,"cart.config"), textutils.serialize(conf))
-  writeFile(fs.combine(odir,".cartdata"), projData)
+  writeFile(fs.combine(odir, "cart.config"), textutils.serialize(conf))
+  writeFile(fs.combine(odir, ".cartdata"), api.smallify(projData))
 end
 
-function api.carts.unpackage(dir,odir,pass)
+function api.carts.unpackage(dir, odir, pass)
   local sysDir = shell.resolve(".")
   local dir, odir = fs.combine(sysDir, dir), fs.combine(sysDir, odir)
 
   local cartInfo = api.carts.getInfo(dir)
-  local cartData = readFile(fs.combine(dir,".cartdata"))
+  local cartData = api.largify(readFile(fs.combine(dir, ".cartdata")))
   if cartInfo.isSecure then
     assert(crypto, "Cannot unpack secure unpack cart without a Cryptographic Accelerator!")
     assert(pass, "Missing password to unpack secure cart")
@@ -147,12 +225,24 @@ function api.carts.unpackage(dir,odir,pass)
       -- Failed cert test (Wrong Key)
       return false
     end
-    cartData = crypto.decryptAes(cartData,pass,cert.n1)
+    cartData = crypto.decryptAes(cartData, pass, cert.n1)
   else
     cartData = textutils.unserialize(cartData)
   end
-  unserialiseDir(odir,cartData)
+  unserialiseDir(odir, cartData)
   return true
+end
+
+function api.carts.unpackRun(dir, pass)
+  local sysDir = shell.resolve(".")
+  local dir = fs.combine(sysDir, dir)
+  shell.setDir("/")
+  fs.delete(tempDir)
+  fs.makeDir(tempDir)
+  api.carts.unpackage(dir, tempDir, pass)
+  local suc, err = api.run(tempDir)
+  fs.delete(tempDir)
+  return suc, err
 end
 
 return api

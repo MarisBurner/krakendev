@@ -6,60 +6,52 @@ local vector = _ENGINE.vector
 local player
 
 function DataInit()
-  -- Sounds
-  -- audio.loadSound("song1","TestBop1.dfpwm")
-  -- audio.loadSound("sfx1","TestSfx1.dfpwm")
-  -- Images
-  graphics.loadImage("test","Test.ttbl","tiletable")
-  graphics.loadImage("player","Player.ttbl","tiletable")
-  graphics.loadImage("sword","Sword.ttbl","tiletable")
-  -- Object Presets
-  world.loadPreset("player","player.kobj")
-  world.loadPreset("block","block.kobj")
+	-- Sounds
+	-- audio.loadSound("song1","TestBop1.dfpwm")
+	-- audio.loadSound("sfx1","TestSfx1.dfpwm")
+	-- Images
+	graphics.loadImage("test", "Test.ttbl", "tiletable")
+	graphics.loadImage("player", "Player.ttbl", "tiletable")
+	graphics.loadImage("sword", "Sword.ttbl", "tiletable")
+	-- Object Presets
+	world.loadPreset("player", "player.kobj")
+	world.loadPreset("block", "block.kobj")
 end
 
 function Init()
-  player = world.createEntity(
-    world.createTransform(
-      nil,
-      vector.create2d(1,1)
-    ),
-    world.createTransform(
-      nil,
-      vector.create2d(5,5) -- Object Render Size
-    ),
-  "player")
-  player:addRectHitbox(1,1,5,5)
-  
-  player:addChild(
-    world.createEntity(
-      world.createTransform(
-        vector.create3d(6,1)
-      ),
-      world.createTransform(
-        nil,
-        vector.create2d(5,5) -- Object Render Size
-      ),
-    "block")
-  )
-  world.sceneEntity:addChild(player)
+	player = world.createEntity(
+		world.createTransform(nil, vector.create2d(1, 1)),
+		world.createTransform(
+			nil,
+			vector.create2d(5, 5) -- Object Render Size
+		),
+		"player"
+	)
+	player:addRectHitbox(1, 1, 5, 5)
 
-  world.sceneVars.floor = world.createEntity(
-    world.createTransform(
-      vector.create3d(10,10)
-    ),
-    world.createTransform(
-      nil,
-      vector.create2d(5,5) -- Object Render Size
-    ),
-  "block")
-  world.sceneVars.floor:addRectHitbox(1,1,5,5)
-  world.sceneEntity:addChild(world.sceneVars.floor)
+	player:addChild(world.createEntity(
+		world.createTransform(vector.create3d(6, 1)),
+		world.createTransform(
+			nil,
+			vector.create2d(5, 5) -- Object Render Size
+		),
+		"block"
+	))
+	world.sceneEntity:addChild(player)
+
+	world.sceneVars.floor = world.createEntity(
+		world.createTransform(vector.create3d(10, 10)),
+		world.createTransform(
+			nil,
+			vector.create2d(5, 5) -- Object Render Size
+		),
+		"block"
+	)
+	world.sceneVars.floor:addRectHitbox(1, 1, 5, 5)
+	world.sceneEntity:addChild(world.sceneVars.floor)
 end
 
 function Update(delta)
-  graphics.flush("#8888ff","#000000")
-  graphics.writeAt(world.fps,1,1)
-
-
+	graphics.flush("#8888ff", "#000000")
+	graphics.writeAt(world.fps, 1, 1)
 end
