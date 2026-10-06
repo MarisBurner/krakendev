@@ -1,6 +1,6 @@
 local api = require("api")
 local keepShellFlag = true
-local newShellFlag = false
+local twidth, theight = term.getSize()
 
 local function testPath(path)
   if fs.exists(path) then
@@ -66,7 +66,10 @@ local function runCommand(cmd)
   elseif c == "info" then
     assert(#toks == 1, "Invalid arguments (expected 0)")
     local enginePath = fs.find(fs.combine(sysDir, "kdev-runtime*"))[1]
-    print(string.format("Runtime = '%s'", enginePath or "Not Found"))
+    term.setTextColor(colors.pink)
+    print("Shell: KrakenDev Shell 1")
+    print("Dev: KrakenCorp")
+    print(string.format("Runtime: %s", enginePath or "Not Found"))
   elseif c == "ls" then
     local cdir
     if #toks == 1 then
@@ -77,14 +80,42 @@ local function runCommand(cmd)
       error("Invalid arguments (expected 1-2)")
     end
     local paths = fs.list(cdir)
-    for _, p in ipairs(paths) do
+    print(string.format("/ %s | Type",((cdir:sub(-12,-1))..((" "):rep(12))):sub(1,12)))
+    print(("-"):rep(21))
+    for i, p in ipairs(paths) do
+      local dinfo = ""
+      local col = colors.gray
       local apath = fs.combine(cdir, p)
       if fs.isDir(apath) then
-        term.setTextColor(colors.pink)
-      else
-        term.setTextColor(colors.gray)
+        if p == "krakendev" then
+          dinfo = "ENGI"
+          col = colors.blue
+        elseif fs.exists(fs.combine(apath,".cartdata")) then
+          dinfo = "Cart"
+          col = colors.yellow
+        elseif #fs.find(fs.combine(apath,"*.kproj")) > 0 then
+          dinfo = "Proj"
+          col = colors.purple
+        else
+          dinfo = "Dir"
+          col = colors.green
+        end
       end
-      print(p)
+      term.setTextColor(colors.gray)
+      term.write("| ")
+      term.setTextColor(col)
+      term.write((p..((" "):rep(12))):sub(1,12))
+      term.setTextColor(colors.gray)
+      term.write(" | ")
+      term.setTextColor(col)
+      print(dinfo)
+      local cx, cy = term.getCursorPos()
+      if i+3 >= theight then
+        term.setTextColor(colors.gray)
+        term.write("...")
+        os.pullEvent("key")
+        term.setCursorPos(1,cy)
+      end
     end
   elseif c == "cd" then
     assert(#toks == 2, "Invalid arguments (expected 1)")
