@@ -1,13 +1,13 @@
 -- KrakenDev Game Engine
 -- Made by Mari
 
-return function(sysDir, pDir, shell, require)
+return function(api, sysDir, pDir, shell, require)
   os.pullEvent = os.pullEventRaw
 
   -- ENGINE Global
   _ENGINE = {
     globals = { project = {} },
-    system = { path = sysDir, updateQueue = {}, libProcs = {}, shell = shell },
+    system = { api = api, path = sysDir, updateQueue = {}, libProcs = {}, shell = shell },
     project = { path = pDir },
   }
 
@@ -85,9 +85,30 @@ return function(sysDir, pDir, shell, require)
     local isCore = (path == "core" and not abs)
 
     for i, p in ipairs(list) do
+      p = fs.combine(p) -- Confine from escaping directory
       local rpath = path and fs.combine(path, p) or p
       local fpath = abs and rpath or shell.resolveProgram(rpath)
       assert(fpath and fs.exists(fpath), string.format("Couldn't find library '%s'", fpath or rpath))
+
+      if fs.isDir(fpath) then
+        -- Library Directory
+        local libDirPath = fpath
+        local certs = fs.find(fs.combine(libDirPath,"*.cert"))
+
+        -- Look for name first, then index, then lib as source
+        rpath = fs.find(fs.combine(fpath,p.."*"))[1] or fs.find(fs.combine(fpath,"index.lua"))[1] or fs.find(fs.combine(fpath,"lib.lua"))[1]
+        fpath = abs and rpath or shell.resolveProgram(rpath)
+        assert(fpath and fs.exists(fpath), string.format("Failed to locate source for library directory '%s'",p))
+
+        -- Attempt to scour certificates for valid core certificate (Gives system permissions to library)
+        for _, cpath in ipairs(certs) do
+          local cname = fs.getName(cpath)
+          if api.verifyCertificate(fs.combine(libDirPath,cname), readAll(fpath)) then
+            isCore = true
+            break
+          end
+        end
+      end
 
       local fn = loadfile(fpath)
       -- If it isn't a core function, sandbox that shi
@@ -123,24 +144,24 @@ return function(sysDir, pDir, shell, require)
     end
   end
 
-  -- Load in all libraries included
-  loadLibs({ "utils", "vector", "controls", "audio", "graphics", "world" }, "core")
-
-  local confLibs = _ENGINE.project.config.core or _ENGINE.project.config.cores
-  if confLibs then
-    loadLibs(confLibs, "core")
-  end
-
-  local projLibs = fs.combine(_ENGINE.project.path, "libs")
-  if fs.exists(projLibs) then
-    loadLibs(fs.list(projLibs), projLibs, true)
-  end
-
-  table.sort(_ENGINE.system.updateQueue, function(a, b)
-    return a[2] < b[2]
-  end)
-
   local suc, err = pcall(function()
+    -- Load in all libraries included
+    loadLibs({ "utils", "vector", "controls", "audio", "graphics", "world" }, "core")
+
+    local confLibs = _ENGINE.project.config.core or _ENGINE.project.config.cores
+    if confLibs then
+      loadLibs(confLibs, "core")
+    end
+
+    local projLibs = fs.combine(_ENGINE.project.path, "libs")
+    if fs.exists(projLibs) then
+      loadLibs(fs.list(projLibs), projLibs, true)
+    end
+
+    table.sort(_ENGINE.system.updateQueue, function(a, b)
+      return a[2] < b[2]
+    end)
+
     parallel.waitForAny(
       function()
         _ENGINE.globals.world.loadScene(_ENGINE.project.config.start_scene)

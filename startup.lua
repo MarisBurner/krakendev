@@ -8,6 +8,10 @@ term.setCursorPos(1, 1)
 term.clear()
 
 print(string.format("%s | %s", suc and "Success!" or "Error!", err))
-if suc then
-	shell.run("krakendev/shell")
+
+if not suc then
+	print("[Press Any Key To Continue]")
+	os.pullEvent("key")
 end
+
+shell.run("krakendev/shell")

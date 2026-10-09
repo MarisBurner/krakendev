@@ -98,7 +98,7 @@ end
 
 function entitylib.addRectHitbox(e, x, y, w, h)
 	local vector = _ENGINE.vector
-	local l, r, t, b = x, x + w - 1, y, y + h - 1
+	local l, r, t, b = x-1, x + w - 2, y-1, y + h - 2
 	local tl, tr, br, bl = vector.create2d(l, t), vector.create2d(r, t), vector.create2d(r, b), vector.create2d(l, b)
 	local points = { tl, tr, br, bl }
 	e.hitbox = points
@@ -113,10 +113,10 @@ function entitylib.collideWith(e1, e2)
 	end
 	local mainHitbox = e1.absHitbox
 	return lib.recurseEntityGet(e2, function(e)
-		if not e.absHitbox then
+		local hitbox = e.absHitbox
+		if not hitbox then
 			return
 		end
-		local hitbox = e.absHitbox
 		if lib.polygonsIntersect(mainHitbox, hitbox) then
 			return e
 		end
@@ -256,6 +256,8 @@ function lib.everytick()
 		fgraphics.push()
 		if e.hitbox then
 			e.absHitbox = graphics.applyAllTrans(e.hitbox)
+			local a, b, c, d = e.absHitbox[1], e.absHitbox[2], e.absHitbox[3], e.absHitbox[4]
+			--graphics.drawRectBuffer(a.x,a.y,b.x,b.y,c.x,c.y,d.x,d.y,graphics.createSolidShader(nil,1,"/"),0,graphics.gbuffer)
 		end
 		-- Purely Rendering
 		if p.centerGraphics then

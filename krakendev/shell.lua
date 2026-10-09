@@ -187,6 +187,17 @@ local function runCommand(cmd)
       assert(#toks == 3, "Invalid arguments (expected 1)")
       api.run(toks[3])
       runCommand("clear")
+    elseif toks[2] == "certs" then
+      assert(#toks == 2, "Invalid arguments (expected 0)")
+      return table.concat(fs.list(fs.combine(api.engineDir,"certs")),", ")
+    elseif toks[2] == "fsign" then
+      assert(#toks == 5, "Invalid arguments (expected 3)")
+      api.provideFileCertificate(toks[3], toks[4], toks[5])
+      return string.format("Successfully provided certificate for file '%s'", toks[4])
+    elseif toks[2] == "lsign" then
+      assert(#toks == 4, "Invalid arguments (expected 2)")
+      api.provideFileCertificate(toks[4], toks[3], fs.combine(fs.getDir(toks[3]),toks[4]))
+      return string.format("Successfully provided certificate for file '%s'", toks[3])
     elseif toks[2] == "pack" then
       assert(#toks == 4 or #toks == 5, "Invalid arguments (expected 2-3)")
       api.carts.package(toks[3], toks[4], toks[5])
@@ -210,6 +221,9 @@ local function runCommand(cmd)
         {"kd pack","<proj_dir> <odir> [pass]","Packages a project file into a cart"},
         {"kd unpack","<cart_dir> <ndir> [pass]","Unpacks a cart into a project file"},
         {"kd cinfo","<cart_dir>","Returns info about the cart from its config"},
+        {"kd certs",nil,"Shows all certificates"},
+        {"kd fsign","<cert_name> <file> <dest>","Creates a certificate from a file signed with a system certificate"},
+        {"kd lsign","<file> <cert_name>","Quickly generates a certificate for a library directory source file"},
       }
       printHelpInfo("Kraken Dev Commands:",commandInfo,5,toks[3])
     else

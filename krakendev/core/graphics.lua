@@ -487,11 +487,12 @@ function global.rotate(r)
   end)
 end
 
-function lib.renderRect(x,y,w,h,shader,z,buff)
+function lib.renderRectPoints(a,b,c,d,shader,z,buff)
   local vector = _ENGINE.vector
-  local l, r, t, b = x, x+(w-1), y, y+(h-1)
-  local tl, tr, br, bl = vector.create2d(l,t), vector.create2d(r,t), vector.create2d(r,b), vector.create2d(l,b)
-  local points = {tl, tr, br, bl}
+  assert(a.isVector and b.isVector and c.isVector and d.isVector, "Rendering rect points needs vectors!")
+  local points = {
+    a,b,c,d
+  }
   local tPoints = lib.applyAllTrans(points)
   lib.addRenderProcess(function()
     lib.drawRectBuffer(
@@ -502,6 +503,13 @@ function lib.renderRect(x,y,w,h,shader,z,buff)
       shader,z,buff
     )
   end)
+end
+
+function lib.renderRect(x,y,w,h,shader,z,buff)
+  local vector = _ENGINE.vector
+  local l, r, t, b = x, x+(w-1), y, y+(h-1)
+  local tl, tr, br, bl = vector.create2d(l,t), vector.create2d(r,t), vector.create2d(r,b), vector.create2d(l,b)
+  return lib.renderRectPoints(tl, tr, br, bl,shader,z,buff)
 end
 
 function global.rect(x,y,w,h,bc,tc,ch,z)
