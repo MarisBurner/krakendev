@@ -1,4 +1,5 @@
 {
   shader="builtin/image",
-  shaderargs={"sword"},
+  shaderargs={"test"},
+  script="entities/block.lua"
 }

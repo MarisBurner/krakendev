@@ -1,5 +1,5 @@
 {
   shader="builtin/image",
   shaderargs={"player"},
-  script="player.lua"
+  script="entities/player.lua"
 }

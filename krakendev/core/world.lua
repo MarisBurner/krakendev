@@ -38,35 +38,6 @@ function lib.onload()
 	global.camera = _ENGINE.vector.create2d(1, 1)
 end
 
-function lib.polygonsIntersect(pointsA, pointsB)
-	local axes = {}
-	for _, a in ipairs(pointsA) do
-		axes[#axes + 1] = a
-	end
-	for _, a in ipairs(pointsB) do
-		axes[#axes + 1] = a
-	end
-
-	local function project(points, axisX, axisY)
-		local minP, maxP = math.huge, -math.huge
-		for _, p in ipairs(points) do
-			local d = p.x * axisX + p.y * axisY
-			minP = math.min(minP, d)
-			maxP = math.max(maxP, d)
-		end
-		return minP, maxP
-	end
-
-	for _, axis in ipairs(axes) do
-		local minA, maxA = project(pointsA, axis.x, axis.y)
-		local minB, maxB = project(pointsB, axis.x, axis.y)
-		if maxA < minB or maxB < minA then
-			return false
-		end
-	end
-	return true
-end
-
 lib.entities = {}
 lib.entitylib = {}
 local entitylib = lib.entitylib
@@ -94,33 +65,6 @@ function lib.recurseEntity(e, fn, onend)
 	if onend then
 		onend(e)
 	end
-end
-
-function entitylib.addRectHitbox(e, x, y, w, h)
-	local vector = _ENGINE.vector
-	local l, r, t, b = x-1, x + w - 2, y-1, y + h - 2
-	local tl, tr, br, bl = vector.create2d(l, t), vector.create2d(r, t), vector.create2d(r, b), vector.create2d(l, b)
-	local points = { tl, tr, br, bl }
-	e.hitbox = points
-end
-
-function entitylib.collideWith(e1, e2)
-	local fgraphics = _ENGINE.globals.graphics
-	local graphics = _ENGINE.graphics
-	assert(e1.hitbox, "Attempted entity collision with no hitbox.")
-	if not e1.absHitbox then
-		return
-	end
-	local mainHitbox = e1.absHitbox
-	return lib.recurseEntityGet(e2, function(e)
-		local hitbox = e.absHitbox
-		if not hitbox then
-			return
-		end
-		if lib.polygonsIntersect(mainHitbox, hitbox) then
-			return e
-		end
-	end)
 end
 
 function entitylib.addChild(p, c)
@@ -156,22 +100,26 @@ function lib.createEntity(trans, rtrans, config, preset)
 	e.rtransform = rtrans or global.createTransform()
 	e.children = {}
 	e.flags = {}
+	e.hidden = {} -- Hidden important properties
 	e.config = config
 	e.preset = preset
 	setmetatable(e, {
 		__index = function(t, k)
-			if k == "preset" then
+			if k == "preset" or k == "hidden" then
 				return nil
 			end
 			return rawget(lib.entitylib, k) or rawget(t, k)
 		end,
 		__newindex = function(t, k, v)
-			if k == "preset" then
+			if k == "preset" or k == "hidden" then
 				return
 			end
 			rawset(t, k, v)
 		end,
 	})
+	if lib.physicslib and lib.physicslib.oncreate then
+		lib.physicslib.oncreate(e)
+	end
 	if e.preset.script then
 		if e.preset.script.Init then
 			e.preset.script.Init(e)
@@ -221,6 +169,7 @@ global.fps = 0
 global.frames = 0
 lib.lastFrame = 0
 lib.tickpriority = 0
+lib.delta = 0
 local psr = 1 / 60
 function lib.everytick()
 	local ctime = os.epoch("utc")
@@ -233,6 +182,7 @@ function lib.everytick()
 	end
 
 	local delta = (ctime - lib.lastTime) * psr
+	lib.delta = delta
 	lib.sceneEnv.Update(delta)
 
 	lib.recurseEntity(global.sceneEntity, function(e)
@@ -254,11 +204,6 @@ function lib.everytick()
 		--Applied to all shapes
 		lib.applyEntityTransform(e)
 		fgraphics.push()
-		if e.hitbox then
-			e.absHitbox = graphics.applyAllTrans(e.hitbox)
-			local a, b, c, d = e.absHitbox[1], e.absHitbox[2], e.absHitbox[3], e.absHitbox[4]
-			--graphics.drawRectBuffer(a.x,a.y,b.x,b.y,c.x,c.y,d.x,d.y,graphics.createSolidShader(nil,1,"/"),0,graphics.gbuffer)
-		end
 		-- Purely Rendering
 		if p.centerGraphics then
 			fgraphics.centerRect(rt.scale.x, rt.scale.y)

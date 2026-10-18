@@ -27,7 +27,13 @@ function lib.createVector(...)
       return _ENGINE.globals.vector[k] or rawget(t,k)
     end,
     __newindex = function(t,k,v)
-      if type(k) == "number" then
+      if k == "x" then
+        t.dimensions[1] = v
+      elseif k == "y" then
+        t.dimensions[2] = v
+      elseif k == "z" then
+        t.dimensions[3] = v
+      elseif type(k) == "number" then
         rawget(t,"dimensions")[k] = v
       end
       rawset(t,k,v)
@@ -106,6 +112,24 @@ function lib.dotProduct(v,a)
     r = r + (x + a[i])
   end
   return r
+end
+
+function lib.min(v,a)
+  return lib.vecop(function(a,x)
+    return math.min(a,x)
+  end,v,x)
+end
+
+function lib.max(v,a)
+  return lib.vecop(function(a,x)
+    return math.max(a,x)
+  end,v,x)
+end
+
+function lib.trunc(v,a)
+  return lib.vecop(function(a,x)
+    return _ENGINE.utils.trunc(a,x)
+  end,v,a)
 end
 
 function lib.getRotation2d(v)

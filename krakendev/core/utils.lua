@@ -4,6 +4,20 @@ assert(_ENGINE.system, "Core Library Missing System Permissions")
 
 lib.globals = {}
 
+function lib.indexOf(t,v)
+  for k, i in pairs(t) do
+    if i == v then
+      return k
+    end
+  end
+end
+
+function lib.trunc(v,p)
+  -- Truncates a number by decimal places
+  local m = 10 ^ p
+  return math.floor(v * m) / m
+end
+
 function lib.mergeTables(t1, t2)
   local result = {}
   for k, v in pairs(t1) do

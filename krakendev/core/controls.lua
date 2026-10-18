@@ -12,8 +12,12 @@ global.mouseDown = false
 global.mousePressed = false
 global.mouse = {button=0,x=1,y=1}
 
--- Control Tick happens after World Tick
-lib.tickpriority = 1
+function lib.onload()
+  global.mouse.pos = _ENGINE.vector.create2d(1,1)
+end
+
+-- Controls Tick happens before first 5 ticks (World Tick, Physics Tick, ...)
+lib.tickpriority = 5
 function lib.everytick()
   global.keyPressed = false
   global.mousePressed = false
@@ -31,10 +35,11 @@ function lib.process()
       end
       global.mouseDown = true
       global.mouse.button, global.mouse.x, global.mouse.y = event[2], event[3], event[4]
+      global.mouse.pos.dimensions = {global.mouse.x, global.mouse.y}
     elseif e == "mouse_up" then
-      global.mousePressed = true
-      global.mouseDown = true
+      global.mouseDown = false
       global.mouse.button, global.mouse.x, global.mouse.y = event[2], event[3], event[4]
+      global.mouse.pos.dimensions = {global.mouse.x, global.mouse.y}
     elseif e == "key" then
       local k = keys.getName(event[2])
       global.keys[k] = true

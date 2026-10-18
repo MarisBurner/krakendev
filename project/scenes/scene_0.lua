@@ -16,6 +16,7 @@ function DataInit()
 	-- Object Presets
 	world.loadPreset("player", "player.kobj")
 	world.loadPreset("block", "block.kobj")
+	world.loadPreset("sword", "sword.kobj")
 end
 
 function Init()
@@ -27,6 +28,7 @@ function Init()
 		),
 		"player"
 	)
+	player:createRigidBody()
 	player:addRectHitbox(1, 1, 5, 5)
 
 	player:addChild(world.createEntity(
@@ -35,7 +37,7 @@ function Init()
 			nil,
 			vector.create2d(5, 5) -- Object Render Size
 		),
-		"block"
+		"sword"
 	))
 	world.sceneEntity:addChild(player)
 
@@ -47,6 +49,8 @@ function Init()
 		),
 		"block"
 	)
+	world.sceneVars.floor:createRigidBody()
+	world.sceneVars.floor:setStatic(true)
 	world.sceneVars.floor:addRectHitbox(1, 1, 5, 5)
 	world.sceneEntity:addChild(world.sceneVars.floor)
 end
@@ -54,4 +58,5 @@ end
 function Update(delta)
 	graphics.flush("#8888ff", "#000000")
 	graphics.writeAt(world.fps, 1, 1)
+	graphics.writeAt(player.velocity, 1, 2)
 end
