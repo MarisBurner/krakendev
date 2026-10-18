@@ -9,7 +9,7 @@ end
 function Update(self, delta)
 end
 
-function FixedUpdate(self, delta)
+function PhysicsUpdate(self, delta)
   if controls.mouseDown then
     self:addImpulse((controls.mouse.pos - self.pos) * 0.1)
   else

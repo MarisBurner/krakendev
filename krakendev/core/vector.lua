@@ -85,6 +85,14 @@ function lib.div(v,x)
   end,v,x)
 end
 
+function lib.abs(v)
+  local d = {}
+  for i = 1, #v do
+    d[i] = math.abs(v[i])
+  end
+  return lib.createVector(table.unpack(d))
+end
+
 function lib.magSqr(v)
   local m = 0
   for i = 1, #v do

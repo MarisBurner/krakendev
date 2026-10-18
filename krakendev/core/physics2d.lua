@@ -44,10 +44,12 @@ end
 function entitylib.createRigidBody(e)
   e.flags.dophysics = true
   e.pos = vector.create2d(e.transform.pos.x, e.transform.pos.y)
+  e.drag = 0.8
+  e.mass = 1
+  e.force = vector.create2d(0,0)
   e.velocity = vector.create2d(0,0)
+  e.angularForce = 0
   e.angularVelocity = 0
-  e.velocityScalar = vector.create3d(0.8,0.8)
-  e.angularVelocityScalar = 0.8
 end
 
 function entitylib.setStatic(e,v)
@@ -85,7 +87,7 @@ function entitylib.addImpulse(e,v,y)
     assert(type(v)..type(y) == "numbernumber","Impulse expected either a vector2d or two numerical arguments")
     mv = vector.create2d(v,y)
   end
-  e.velocity = mv + e.velocity
+  e.force = mv + e.force
 end
 
 function entitylib.collideWith(e1, e2)
@@ -105,6 +107,31 @@ function entitylib.collideWith(e1, e2)
 	end)
 end
 
+lib.fixedTime = 1
+
+function lib.fixedPhysics(e)
+  e.velocity = e.velocity * e.drag
+  e.velocity = e.velocity + ((e.force / e.mass) * lib.fixedTime)
+  if e.velocity:mag() < 0.0001 then
+    e.velocity = vector.create2d()
+  end
+
+  if e.flags.physics_staticX then
+    e.velocity.x = 0
+  end
+  if e.flags.physics_staticY then
+    e.velocity.y = 0
+  end
+  if e.flags.physics_staticR then
+    e.angularVelocity = 0
+  end
+  e.pos = e.pos + (e.velocity * lib.fixedTime)
+end
+
+function lib.fixedStep(e)
+end
+
+lib.physicsAccumulator = 0 -- Saves up time for each new Fixed Step to calculate
 lib.tickpriority = 1 -- Right after entity step
 function lib.everytick()
   local physEnts = {}
@@ -115,24 +142,28 @@ function lib.everytick()
   for i = 1, #physEnts do
     local e = physEnts[i]
     local p = rawget(e, "preset")
-
-		if p.script and p.script.FixedUpdate then
-			p.script.FixedUpdate(e, lib.delta)
+    -- Before Physics Loop
+		if p.script and p.script.PhysicsUpdate then
+			p.script.PhysicsUpdate(e, lib.delta)
 		end
+  end
+  lib.physicsAccumulator = lib.physicsAccumulator + world.delta
+  while lib.physicsAccumulator > lib.fixedTime do
+    -- Physics Fixed Updates
+    for i = 1, #physEnts do
+      local e = physEnts[i]
+      lib.fixedPhysics(e)
+    end
+    for i = 1, #physEnts do
+      local e = physEnts[i]
+      lib.fixedStep(e)
+    end
+    lib.physicsAccumulator = lib.physicsAccumulator - lib.fixedTime
   end
   for i = 1, #physEnts do
     local e = physEnts[i]
-    if e.flags.physics_staticX then
-      e.velocity.x = 0
-    end
-    if e.flags.physics_staticY then
-      e.velocity.y = 0
-    end
-    if e.flags.physics_staticR then
-      e.angularVelocity = 0
-    end
-    e.pos = e.pos + e.velocity
-    e.velocity = (e.velocity * e.velocityScalar):trunc(3)
+    -- After Physics Loop
+    e.force = vector.create2d()
     e.transform.pos.x, e.transform.pos.y = math.floor(e.pos.x), math.floor(e.pos.y)
   end
 end

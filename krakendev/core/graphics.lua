@@ -142,7 +142,7 @@ function global.loadImage(id, path, type)
     local obj = textutils.unserialise(imgData)
     imgBuff = lib.createBuffer(obj.size[1],obj.size[2])
     for i, t in ipairs(obj.tiles) do
-      lib.writeBuff(i,t[1],lib.estimateRGB(t[2]),lib.estimateRGB(t[3]),0,imgBuff)
+      lib.writeBuff(i,t[1],t[2],t[3],0,imgBuff)
     end
   else
     error(string.format("Cannot format image '%s' to format '%s'",id,type))
@@ -197,7 +197,11 @@ function lib.estimateRGB(pcolor)
     rgb = bit.band(tonumber(pcolor:sub(-6), 16), 0xffffff)
   end
 
-  assert(rgb, string.format("Invalid RGB color '%s'", tostring(pcolor)))
+  if not rgb then
+    return
+  end
+  --assert(rgb, string.format("Invalid RGB color '%s'", tostring(pcolor)))
+  
   if not calcColorBuffer[rgb] then
     local vector = _ENGINE.vector
     local rgbVec = vector.create3d(colors.unpackRGB(rgb))
@@ -261,11 +265,11 @@ lib.shaders = {}
 global.shaders = {}
 
 function lib.shaders.placeholder(x,y,u,v,w)
-  return lib.estimateRGB(global.RGB(u*255,v*255,w*255)), 1, " "
+  return global.RGB(u*255,v*255,w*255), 1, " "
 end
 
 function lib.shaders.placeholderRect(x,y,u,v,w,uu,vv)
-  return lib.estimateRGB(global.RGB(uu*255,vv*255,0)), 1, " "
+  return global.RGB(uu*255,vv*255,0), 1, " "
 end
 
 function lib.shaders.empty(x,y,u,v,w,uu,vv)
@@ -279,12 +283,6 @@ function lib.createSolidShader(bc,tc,t)
 end
 
 function lib.createRGBSolidShader(bc,tc,t)
-  if bc then
-    bc = lib.estimateRGB(bc)
-  end
-  if tc then
-    tc = lib.estimateRGB(tc)
-  end
   return function(x,y,u,v,w)
     return bc, tc, t
   end
@@ -514,8 +512,6 @@ end
 
 function global.rect(x,y,w,h,bc,tc,ch,z)
   local ch = tostring(ch or " ")
-  local bc = lib.estimateRGB(bc)
-  local tc = lib.estimateRGB(tc)
   local shader = lib.createSolidShader(bc,tc,ch)
   lib.renderRect(x,y,w,h,shader,z,lib.gbuffer)
 end
@@ -553,23 +549,17 @@ lib.gbuffer = lib.createBuffer(global.width, global.height)
 -- Global Drawing Functions
 
 function global.flush(bc, tc, ch)
-  bc = lib.estimateRGB(bc)
-  tc = lib.estimateRGB(tc)
   lib.flushBuffer(ch or " ", bc, tc, -math.huge, lib.gbuffer)
 end
 
 function global.drawLine(x1, y1, x2, y2, bc, tc, t, z)
   t = tostring(t or " ")
-  bc = lib.estimateRGB(bc)
-  tc = lib.estimateRGB(tc)
   local shader = lib.createSolidShader(bc,tc,t)
   lib.drawLineBuffer(x1,y1,x2,y2,shader,z,lib.gbuffer)
 end
 
 function global.drawRectPoints(x1,y1,x2,y2,x3,y3,x4,y4,bc,tc,ch,z)
   c = tostring(t or " ")
-  bc = lib.estimateRGB(bc)
-  tc = lib.estimateRGB(tc)
   local shader = lib.createSolidShader(bc,tc,t)
   lib.drawRectBuffer(x1,y1,x2,y2,x3,y3,x4,y4,shader,z,lib.gbuffer)
 end
@@ -583,16 +573,12 @@ end
 
 function global.drawTriangle(x1, y1, x2, y2, x3, y3, bc, tc, t, z)
   t = tostring(t or " ")
-  bc = lib.estimateRGB(bc)
-  tc = lib.estimateRGB(tc)
   local shader = lib.createSolidShader(bc,tc,t)
   lib.drawTriangleBuffer(x1,y1,x2,y2,x3,y3,nil,shader,z,lib.gbuffer)
 end
 
 function global.writeAt(txt, x, y, bc, tc, z)
   txt = tostring(txt)
-  bc = lib.estimateRGB(bc)
-  tc = lib.estimateRGB(tc)
 
   for i = 1, txt:len() do
     lib.writeBuffPos(x+i-1,y,txt:sub(i,i),bc,tc,z,lib.gbuffer)
@@ -615,8 +601,8 @@ function lib.everytick()
       i = i + 1
       term.setCursorPos(x, y)
       local ch, bc, tc = table.unpack(lib.gbuffer[i] or {})
-      term.setTextColor(tc or colors.white)
-      term.setBackgroundColor(bc or colors.black)
+      term.setTextColor(lib.estimateRGB(tc) or colors.white)
+      term.setBackgroundColor(lib.estimateRGB(bc) or colors.black)
       term.write(ch or " ")
     end
   end

@@ -10,6 +10,6 @@ function Update(self, delta)
 
 end
 
-function FixedUpdate(self, delta)
+function PhysicsUpdate(self, delta)
   
 end
