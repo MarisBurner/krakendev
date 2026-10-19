@@ -4,6 +4,8 @@ assert(_ENGINE.system, "Core Library Missing System Permissions")
 
 local vector = _ENGINE.vector
 local world = _ENGINE.world
+local graphics = _ENGINE.graphics
+local fgraphics = _ENGINE.globals.graphics
 local entitylib = world.entitylib
 world.physicslib = lib -- Access to special events
 
@@ -41,10 +43,17 @@ function lib.oncreate(e)
   
 end
 
+lib.global = {}
+local global = lib.global
+
+global.default = {}
+global.default.drag = 0.8
+
 function entitylib.createRigidBody(e)
   e.flags.dophysics = true
   e.pos = vector.create2d(e.transform.pos.x, e.transform.pos.y)
-  e.drag = 0.8
+  e.rotation = 0
+  e.drag = global.default.drag
   e.mass = 1
   e.force = vector.create2d(0,0)
   e.velocity = vector.create2d(0,0)
@@ -72,7 +81,7 @@ end
 
 function entitylib.addRectHitbox(e, x, y, w, h)
 	local vector = _ENGINE.vector
-	local l, r, t, b = x-1, x + w - 2, y-1, y + h - 2
+	local l, r, t, b = x, x + w - 1, y, y + h - 1
 	local tl, tr, br, bl = vector.create2d(l, t), vector.create2d(r, t), vector.create2d(r, b), vector.create2d(l, b)
 	local points = { tl, tr, br, bl }
 	e.hitbox = points
@@ -90,45 +99,56 @@ function entitylib.addImpulse(e,v,y)
   e.force = mv + e.force
 end
 
-function entitylib.collideWith(e1, e2)
-	assert(e1.hitbox, "Attempted entity collision with no hitbox.")
-	if not e1.absHitbox then
-		return
-	end
-	local mainHitbox = e1.absHitbox
-	return world.recurseEntityGet(e2, function(e)
-		local hitbox = e.absHitbox
-		if not hitbox then
-			return
-		end
-		if lib.polygonsIntersect(mainHitbox, hitbox) then
-			return e
-		end
-	end)
+function entitylib.addAngularImpulse(e,v)
+  e.angularForce = e.angularForce + v
 end
 
-lib.fixedTime = 1
-
-function lib.fixedPhysics(e)
-  e.velocity = e.velocity * e.drag
-  e.velocity = e.velocity + ((e.force / e.mass) * lib.fixedTime)
-  if e.velocity:mag() < 0.0001 then
-    e.velocity = vector.create2d()
+global.fixedTime = 0.3
+function lib.fixedStep(physEnts)
+  if world.sceneEnv.AfterEntities then
+    world.sceneEnv.FixedStep(global.fixedTime)
   end
 
-  if e.flags.physics_staticX then
-    e.velocity.x = 0
-  end
-  if e.flags.physics_staticY then
-    e.velocity.y = 0
-  end
-  if e.flags.physics_staticR then
-    e.angularVelocity = 0
-  end
-  e.pos = e.pos + (e.velocity * lib.fixedTime)
-end
+  for i = 1, #physEnts do
+    local e = physEnts[i]
+    -- Do physics
+    e.velocity = e.velocity * e.drag
+    e.velocity = e.velocity + ((e.force / e.mass) * global.fixedTime)
 
-function lib.fixedStep(e)
+    if e.flags.physics_staticX then
+      e.velocity.x = 0
+    end
+    if e.flags.physics_staticY then
+      e.velocity.y = 0
+    end
+    if e.flags.physics_staticR then
+      e.angularVelocity = 0
+    end
+    e.rotation = e.rotation + (e.angularVelocity * global.fixedTime)
+    e.pos = e.pos + (e.velocity * global.fixedTime)
+
+    e.force = vector.create2d()
+    e.angularForce = 0
+  end
+
+  for i = 1, #physEnts do
+    local e = physEnts[i]
+    fgraphics.push()
+      world.applyAllEntityTransform(e)
+      e.absHitbox = graphics.applyAllTrans(e.hitbox) -- Create an absolute hitbox
+    fgraphics.pop()
+  end
+
+  for i = 1, #physEnts do
+    local e = physEnts[i]
+
+    graphics.renderRectPoints(e.absHitbox[1],e.absHitbox[2],e.absHitbox[3],e.absHitbox[4],graphics.createRGBSolidShader(nil,"#ff00ff","/"),1,graphics.gbuffer)
+
+    local p = rawget(e, "preset")
+    if p.script and p.script.FixedUpdate then
+      p.script.FixedUpdate(e) -- Fixed Step for entity
+    end
+  end
 end
 
 lib.physicsAccumulator = 0 -- Saves up time for each new Fixed Step to calculate
@@ -139,33 +159,22 @@ function lib.everytick()
     if not e.flags.dophysics then return end
     physEnts[#physEnts+1] = e
   end)
-  for i = 1, #physEnts do
-    local e = physEnts[i]
-    local p = rawget(e, "preset")
-    -- Before Physics Loop
-		if p.script and p.script.PhysicsUpdate then
-			p.script.PhysicsUpdate(e, lib.delta)
-		end
-  end
+
   lib.physicsAccumulator = lib.physicsAccumulator + world.delta
-  while lib.physicsAccumulator > lib.fixedTime do
-    -- Physics Fixed Updates
-    for i = 1, #physEnts do
-      local e = physEnts[i]
-      lib.fixedPhysics(e)
-    end
-    for i = 1, #physEnts do
-      local e = physEnts[i]
-      lib.fixedStep(e)
-    end
-    lib.physicsAccumulator = lib.physicsAccumulator - lib.fixedTime
+  while lib.physicsAccumulator > global.fixedTime do
+    lib.fixedStep(physEnts)
+    lib.physicsAccumulator = lib.physicsAccumulator - global.fixedTime
   end
+
   for i = 1, #physEnts do
     local e = physEnts[i]
     -- After Physics Loop
-    e.force = vector.create2d()
     e.transform.pos.x, e.transform.pos.y = math.floor(e.pos.x), math.floor(e.pos.y)
+    e.transform.rot = e.rotation
   end
+  if world.sceneEnv.AfterEntities then
+		world.sceneEnv.AfterPhysics(delta) -- After Physics Update for scene
+	end
 end
 
 return "physics2d", lib

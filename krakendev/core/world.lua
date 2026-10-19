@@ -94,6 +94,17 @@ function lib.applyEntityTransform(entity)
 	fgraphics.translate(abst.pos.x - 1, abst.pos.y - 1)
 end
 
+function lib.applyAllEntityTransform(entity)
+	local e = entity
+	while e do
+		lib.applyEntityTransform(e)
+		e = entity.parent
+		if e == global.sceneEntity then
+			break
+		end
+	end
+end
+
 function lib.createEntity(trans, rtrans, config, preset)
 	local e = {}
 	e.transform = trans or global.createTransform()
