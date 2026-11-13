@@ -87,6 +87,10 @@ function entitylib.addRectHitbox(e, x, y, w, h)
 	e.hitbox = points
 end
 
+function entitylib.removeHitbox()
+  e.hitbox = nil
+end
+
 function entitylib.addImpulse(e,v,y)
   local mv
   if type(y) == "nil" then
@@ -136,7 +140,14 @@ function lib.fixedStep(physEnts)
     fgraphics.push()
       world.applyAllEntityTransform(e)
       e.absHitbox = graphics.applyAllTrans(e.hitbox) -- Create an absolute hitbox
+      e.collisions = {}
     fgraphics.pop()
+    for j = 1, #physEnts do
+      local e2 = physEnts[i]
+      if e2 ~= e then
+        
+      end
+    end
   end
 
   for i = 1, #physEnts do
